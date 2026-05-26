@@ -1,6 +1,9 @@
 export async function registerComplianceWebhooks() {}
 export async function saveShop() {}
-export function verifyShopifyHmac() { return true; }
+
+export function verifyShopifyHmac(_params?: URLSearchParams) {
+  return true;
+}
 
 export async function registerShopifyWebhooks() {}
 
@@ -13,4 +16,6 @@ export async function exchangeCodeForToken() {
   return { access_token: "dummy", scope: "" };
 }
 
-export async function consumeNonce() { return true; }
+export async function consumeNonce() {
+  return true;
+}
