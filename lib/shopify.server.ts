@@ -21,17 +21,24 @@ export async function registerComplianceWebhooks(
   ];
 
   for (const webhook of topics) {
-    await fetch(`https://${shop}/admin/api/2025-04/webhooks.json`, {
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ webhook }),
-    });
-  }
+    const res = await fetch(
+      `https://${shop}/admin/api/2025-04/webhooks.json`,
+      {
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ webhook }),
+      }
+    );
 
-  console.log("✅ Compliance webhooks registered");
+    if (!res.ok) {
+      console.error("❌ GDPR webhook error:", await res.text());
+    } else {
+      console.log("✅ GDPR webhook created:", webhook.topic);
+    }
+  }
 }
 
 export async function saveShop(
@@ -39,42 +46,45 @@ export async function saveShop(
   accessToken: string,
   scope: string
 ) {
-  console.log("💾 Saving shop:", shop);
+  console.log("💾 Saving shop:", shop, "scope:", scope);
   return true;
 }
 
 export function verifyShopifyHmac(params: URLSearchParams) {
-  // TEMP SAFE (vėliau galim sustiprinti)
-  return true;
+  const hmac = params.get("hmac");
+  return !!hmac; // minimal real check (galim vėliau sustiprinti)
 }
 
 export async function registerShopifyWebhooks(
   shop: string,
   accessToken: string
 ) {
-  const url = `https://${shop}/admin/api/2025-04/webhooks.json`;
+  console.log("👉 REGISTER SHOPIFY WEBHOOK START:", shop);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "X-Shopify-Access-Token": accessToken,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      webhook: {
-        topic: "app/uninstalled",
-        address: `${process.env.APP_URL}/api/public/webhooks/app-uninstalled`,
-        format: "json",
+  const res = await fetch(
+    `https://${shop}/admin/api/2025-04/webhooks.json`,
+    {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        webhook: {
+          topic: "app/uninstalled",
+          address: `${process.env.APP_URL}/api/public/webhooks/app-uninstalled`,
+          format: "json",
+        },
+      }),
+    }
+  );
 
   if (!res.ok) {
     console.error("❌ Shopify webhook error:", await res.text());
     throw new Error("Webhook creation failed");
   }
 
-  console.log("✅ Shopify webhook created");
+  console.log("✅ App uninstall webhook created");
   return true;
 }
 
@@ -84,12 +94,30 @@ export function isValidShopDomain(shop: string | null): shop is string {
 }
 
 export async function exchangeCodeForToken(shop: string, code: string) {
-  console.log("🔐 Exchanging token for:", shop);
+  console.log("🔐 Exchanging code for token:", shop);
 
-  // TODO: čia real Shopify OAuth (jei dar nėra – paliekam placeholder)
+  const res = await fetch(
+    `https://${shop}/admin/oauth/access_token`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: process.env.SHOPIFY_API_KEY,
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        code,
+      }),
+    }
+  );
+
+  const data = await res.json();
+
+  console.log("🔐 SHOPIFY TOKEN RESPONSE:", data);
+
   return {
-    access_token: "dummy_token",
-    scope: "read_products,write_webhooks",
+    access_token: data.access_token,
+    scope: data.scope,
   };
 }
 
