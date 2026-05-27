@@ -1,0 +1,18 @@
+name = "Adsify"
+client_id = "0df9bbffb6a75df0fa0de3aa76a6f79f"
+application_url = "https://adsify.app"
+embedded = true
+
+[access_scopes]
+scopes = "read_orders,read_customers,read_products,write_script_tags,read_script_tags"
+
+[auth]
+redirect_urls = ["https://adsify.app/auth/shopify/callback"]
+
+[webhooks]
+api_version = "2025-04"
+
+[webhooks.privacy_compliance]
+customer_deletion_url = "https://adsify-backend-p1lhslggo-amazonready-devs-projects.vercel.app/api/shopify/webhooks/customers-redact"
+customer_data_request_url = "https://adsify-backend-p1lhslggo-amazonready-devs-projects.vercel.app/api/shopify/webhooks/customers-data-request"
+shop_deletion_url = "https://adsify-backend-p1lhslggo-amazonready-devs-projects.vercel.app/api/shopify/webhooks/shop-redact"

@@ -11,7 +11,7 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    console.log("👉 CALLBACK START");
+    console.log("🚀 CALLBACK START");
 
     const url = new URL(req.url);
     const params = url.searchParams;
@@ -20,46 +20,71 @@ export async function GET(req: NextRequest) {
     const code = params.get("code");
     const state = params.get("state");
 
-    console.log("👉 PARAMS:", { shop, code, state });
+    console.log("📦 PARAMS:", { shop, code: !!code, state });
 
-    if (!isValidShopDomain(shop) || !code || !state) {
-      console.log("❌ BAD REQUEST PARAMS");
-      return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    if (!isValidShopDomain(shop)) {
+      console.log("❌ Invalid shop domain");
+      return NextResponse.json({ error: "Invalid shop" }, { status: 400 });
+    }
+
+    if (!code || !state) {
+      console.log("❌ Missing code/state");
+      return NextResponse.json({ error: "Missing params" }, { status: 400 });
     }
 
     if (!verifyShopifyHmac(params)) {
-      console.log("❌ INVALID HMAC");
+      console.log("❌ Invalid HMAC");
       return NextResponse.json({ error: "Invalid HMAC" }, { status: 401 });
     }
 
-    const ok = await consumeNonce(state, shop);
-    if (!ok) {
-      console.log("❌ INVALID STATE");
+    const nonceOk = await consumeNonce(state, shop);
+    if (!nonceOk) {
+      console.log("❌ Invalid nonce/state");
       return NextResponse.json({ error: "Invalid state" }, { status: 401 });
     }
 
-    console.log("👉 EXCHANGING TOKEN");
+    console.log("🔐 Exchanging token...");
 
     const { access_token, scope } = await exchangeCodeForToken(shop, code);
 
-    console.log("👉 TOKEN RECEIVED");
+    console.log("✅ Token received");
 
+    console.log("💾 Saving shop...");
     await saveShop(shop, access_token, scope);
-    console.log("👉 SHOP SAVED");
 
-    await registerShopifyWebhooks(shop, access_token);
-    console.log("👉 WEBHOOKS REGISTERED");
+    // 🔥 WEBHOOK REGISTRATION ZONE (DEBUG FRIENDLY)
+    console.log("👉 REGISTER SHOPIFY WEBHOOKS START");
 
-    await registerComplianceWebhooks(shop, access_token);
-    console.log("👉 COMPLIANCE WEBHOOKS DONE");
+    try {
+      const res1 = await registerShopifyWebhooks(shop, access_token);
+      console.log("✅ SHOPIFY WEBHOOKS OK:", res1);
+    } catch (err) {
+      console.error("❌ SHOPIFY WEBHOOK FAILED:", err);
+    }
 
-    console.log("👉 CALLBACK DONE");
+    console.log("👉 REGISTER COMPLIANCE WEBHOOKS START");
 
-    return NextResponse.redirect(`https://${shop}/admin/apps`, 302);
+    try {
+      const res2 = await registerComplianceWebhooks(shop, access_token);
+      console.log("✅ COMPLIANCE WEBHOOKS OK:", res2);
+    } catch (err) {
+      console.error("❌ COMPLIANCE WEBHOOK FAILED:", err);
+    }
+
+    console.log("🎯 CALLBACK FINISHED");
+
+    return NextResponse.redirect(
+      `https://${shop}/admin/apps`,
+      302
+    );
   } catch (err) {
-    console.error("🔥 CALLBACK ERROR:", err);
+    console.error("🔥 CALLBACK FATAL ERROR:", err);
+
     return NextResponse.json(
-      { error: "Internal error" },
+      {
+        error: "Internal error",
+        message: err instanceof Error ? err.message : "Unknown",
+      },
       { status: 500 }
     );
   }
