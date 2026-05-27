@@ -5,7 +5,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.text();
 
-    const hmacHeader = headers().get("x-shopify-hmac-sha256");
+    const hmacHeader = (await headers()).get("x-shopify-hmac-sha256");
+
     if (!hmacHeader) {
       return new Response("Missing HMAC", { status: 401 });
     }
@@ -20,16 +21,16 @@ export async function POST(req: Request) {
       .update(body, "utf8")
       .digest("base64");
 
-    const safeCompare =
+    const valid =
       generatedHmac.length === hmacHeader.length &&
       crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmacHeader));
 
-    if (!safeCompare) {
+    if (!valid) {
       return new Response("Invalid HMAC", { status: 401 });
     }
 
     return new Response("ok", { status: 200 });
-  } catch (err) {
+  } catch (e) {
     return new Response("Server error", { status: 500 });
   }
 }
